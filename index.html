@@ -1,0 +1,352 @@
+POWERED BY BRDL <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Maker Conversation</title>
+  <style>
+    body {
+      font-family: 'cursive', sans-serif;
+      background-color: #f4f4f4;
+      color: #333;
+      text-align: center;
+      margin-top: 50px;
+    }
+    h1 {
+      color: #4CAF50;
+      margin-bottom: 30px;
+    }
+    select {
+      padding: 10px;
+      font-size: 16px;
+      margin: 20px 0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      background-color: #fff;
+      transition: border 0.3s;
+    }
+    select:hover {
+      border-color: #4CAF50;
+    }
+    #conversationBox, #summaryBox {
+      margin: 20px auto;
+      padding: 15px;
+      border: 1px solid #ccc;
+      width: 90%;
+      max-width: 500px;
+      height: 300px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      text-align: left;
+      background-color: #fff;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    #summaryBox {
+      min-height: 100px;
+      max-height: none;
+      resize: vertical;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 10px;
+      transition: background-color 0.3s, transform 0.2s;
+    }
+    button:hover {
+      background-color: #45a049;
+      transform: scale(1.05);
+    }
+    button:active {
+      transform: scale(0.95);
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Create Any thing</h1>
+
+  <!-- Dropdown Menu for Selecting the Topic -->
+  <select id="topicSelect">
+    <option value="test">Test</option>
+    <option value="summary">Summary</option>
+    <option value="bulletPoints">Bullet Points</option>
+    <option value="mainPoints">Create AI video</option>
+    <option value="repeatedTopics">All-time Repeated Topics</option>
+    <option value="repeatedQuestions">All-time Repeated Questions</option>
+    <option value="previousQuestions">PYQ's</option>
+    <option value="notes">Notes</option>
+    <option value="formulas">All formula of Chapter</option>
+  </select>
+
+  <!-- Start Conversation Button -->
+  <button id="startButton">Start Creating</button>
+  
+  <!-- Refresh Conversation Button -->
+  <button id="refreshButton" class="hidden">Refresh Conversation</button>
+
+  <!-- Box for displaying questions and user responses -->
+  <div id="conversationBox" contenteditable="true"></div>
+
+  <!-- Separate box for displaying the summary -->
+  <div id="summaryBox" class="hidden" contenteditable="true"></div>
+  <button id="copySummaryButton" class="hidden">Copy Prompt</button>
+
+  <script>
+    const questionSets = {
+      "test": ["Publisher Name", "Class", "Subject",
+        "Chapter Name", "Chapter Number", "Total Questions", "Number of MCQs", "True/False",
+        "Assertion Regions", "Fill in the Blank", "Short Questions", "Long Questions",
+        "chapter from whole syllabus or from chapter", "Total Marks", "Test Difficulty Level hard normal easy", "Test Language",
+        "Question Type numerical theory+numerical  only theory", "Special Command"
+      ],
+      "summary": [
+       "publisher", "class","subject","chapter name","chapter number","language","special command"
+      ],
+      "bulletPoints": ["publisher", "class","subject","chapter name","chapter number","language","special command"
+  
+      ],
+      "mainPoints": ["institute name","teacher name","publisher", "class","subject","book name","chapter name","chapter number","video language","video length Alert maximun 10 minute","voice indian female ,male ,small kid","background music option 20%,30%,50%,60%","special command"
+  
+      ],
+      "repeatedTopics": ["publisher name", "class","subject","chapter name","chapter number","language","special command"
+     
+      ],
+      "repeatedQuestions": [
+        "publisher name", "class","subject","chapter name","chapter number","language","repeated question from year","book name","special command"
+     
+      ],
+      "previousQuestions": [
+        "publisher name", "class","subject","chapter name","chapter number","language","question from year","book name","special command"
+     
+      ],
+      "notes": [
+       "publisher name", "class","subject","chapter name","chapter number","language","book name","special command"
+     
+      ],
+      "formulas": [
+        "publisher name", "class","subject","chapter name","chapter number","language","special command"
+     
+      ]
+    };
+
+// Variables to track current question and conversation log
+    let currentQuestion = 0;
+    const conversationLog = [];
+    const summary = {};
+    let responseTimer;
+    let alertInterval;
+
+    // Reference to DOM elements
+    const startButton = document.getElementById('startButton');
+    const refreshButton = document.getElementById('refreshButton');
+    const conversationBox = document.getElementById('conversationBox');
+    const summaryBox = document.getElementById('summaryBox');
+    const copySummaryButton = document.getElementById('copySummaryButton');
+    const topicSelect = document.getElementById('topicSelect');
+
+    let selectedTopic = "test"; // Default topic
+
+    // When topic changes, update the selected topic and reset the conversation
+    topicSelect.addEventListener('change', function() {
+      selectedTopic = this.value;
+      resetConversation();
+    });
+
+    // Web Speech API Speech Recognition setup
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = 'en-US'; 
+    recognition.continuous = false; 
+    recognition.interimResults = false; 
+
+    // Start the conversation when the button is clicked
+    startButton.addEventListener('click', () => {
+      startConversation();
+      startButton.classList.add('hidden');  
+      refreshButton.classList.remove('hidden'); 
+    });
+
+    // Refresh the conversation when the refresh button is clicked
+    refreshButton.addEventListener('click', () => {
+      resetConversation();
+    });
+
+    function startConversation() {
+      currentQuestion = 0; 
+      conversationLog.length = 0; 
+      summaryBox.classList.add('hidden'); 
+      copySummaryButton.classList.add('hidden'); 
+      askQuestion();
+    }
+
+    function resetConversation() {
+      startButton.classList.remove('hidden');  
+      refreshButton.classList.add('hidden');
+      conversationBox.textContent = '';
+      summaryBox.textContent = '';
+      summaryBox.classList.add('hidden');
+      copySummaryButton.classList.add('hidden');
+      summary = {};
+      currentQuestion = 0; // Reset current question index
+    }
+
+    // Function to ask a question, speak it, and wait for user's response
+    function askQuestion() {
+      const currentQuestions = questionSets[selectedTopic];
+      if (currentQuestion < currentQuestions.length) {
+        const questionText = currentQuestions[currentQuestion];
+        conversationLog.push(`Q: ${questionText}`);
+        updateConversationBox();
+
+        // Speak the question out loud
+        speakText(questionText);
+      } else {
+        generateSummary();  
+        summaryBox.classList.remove('hidden');
+        copySummaryButton.classList.remove('hidden');
+      }
+    }
+
+    function updateConversationBox() {
+      conversationBox.textContent = conversationLog.join('\n');
+    }
+
+    function speakText(text) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-US';
+      window.speechSynthesis.speak(utterance);
+      utterance.onend = () => {
+        listenForAnswer();  
+      };
+    }
+
+    function listenForAnswer() {
+      recognition.start();
+      resetResponseTimer(); 
+
+      recognition.onresult = function(event) {
+        const userAnswer = event.results[0][0].transcript;
+        conversationLog.push(`A: ${userAnswer}`);
+        updateConversationBox();
+        clearResponseTimer(); 
+
+        if (userAnswer.trim().length === 0) {
+          speakText("Please respond.");
+        } else {
+          storeAnswer(userAnswer);
+          setTimeout(() => {
+            currentQuestion++;
+            askQuestion();
+          }, 1000);
+        }
+      };
+
+      recognition.onerror = function(event) {
+        // Do nothing if there is an error
+        clearResponseTimer();
+      };
+      
+      // Listen for silence after the user starts speaking
+      recognition.onend = function() {
+        // If the user has not spoken for 5 seconds, remind them
+        if (currentQuestion < questionSets[selectedTopic].length) {
+          responseTimer = setTimeout(() => {
+            speakText("Please respond.");
+            alertInterval = setInterval(() => {
+              speakText("Please respond.");
+            }, 9000);
+          }, 3000); // 5 seconds
+        }
+      };
+    }
+
+    function resetResponseTimer() {
+      clearInterval(alertInterval); 
+      clearTimeout(responseTimer);
+    }
+
+    function clearResponseTimer() {
+      clearTimeout(responseTimer);
+      clearInterval(alertInterval);
+    }
+
+    function storeAnswer(userAnswer) {
+      const currentQuestions = questionSets[selectedTopic];
+      const currentQ = currentQuestions[currentQuestion];
+      summary[currentQ] = userAnswer;
+    }
+
+    // Function to generate the summary showing only key points
+    function generateSummary() {
+  let summaryText = `${selectedTopic.charAt(0).toUpperCase() + selectedTopic.slice(1)} create it in minimum 2000 words but you can use 20,000 words maximum according to need to use and make it in a proper way accordingly by given command and use CBSE formate for Gnenerating this content from given inforamtion consider only filled information:\n\n`;
+
+  // Add all the user responses to the summary
+  for (const question in summary) {
+    summaryText += `${question} - ${summary[question]}\n`;
+  }
+
+  // Add a custom line based on the selected topic
+  switch (selectedTopic) {
+    case 'test':
+      summaryText += "\ncreate test and make it in a proper way to which I can directly copy it and paste it and then make a print of it and put all the options in vertical series and use CBSE formate for making questions"; 
+      break;
+    case 'summary':
+      summaryText += "\ncreate summary with all important formula,numericals etc. If it is there, then fine; otherwise, it doesn't matter use this given chapter for createing summary";
+      break;
+    case 'bulletPoints':
+      summaryText += "\ncreate bullet points with all important formula,numericals etc. If it is there, then fine; otherwise, it doesn't matter use this given chapter details create in detailed explanation";
+      break;
+    case 'mainPoints':
+      summaryText += "\nsearch for the book and content from the book and then create the detailed video and  make it in a proper way to which I can directly show it to students and they can easily understand this video  create a script for a educational video using 3d effects and animations in this video and introduce teacher also if name is give and introduce school name also at the starting of the video if given ask some questions also releted to this chapter in middle of the video for making curious to students to learn more about this chapter , now give me the script for this video and use can use any of the stock for getting secenes for the video and use the scenes accordingly related to the topics carefully and dont forgot to use subtitles in video while playing scenes for better  understanding to students  make it conceptual video and cover all the topics in the chapter or of specific topic";
+      break;
+    case 'repeatedTopics':
+      summaryText += "\ncreate all time repeated topics in exam with all important formula,numericals etc with detailed explanation";
+      break;
+    case 'repeatedQuestions':
+      summaryText += "\ncreate all time repeated Questions in exam of CBSE minimum 50 Questions";
+      break;
+    case 'previousQuestions':
+      summaryText += "\nCreate: create a 100 marks test paper with minimum 50 question and create test paper by analysing previous years Questions in exam of CBSE india and then combine all the questions and make sure do research then make test paper";
+      break;
+    case 'notes':
+      summaryText += "\ncreate notes from this given chapter cover all topics with all important formula,numericals , points etc. If it is there, then fine; otherwise, it doesn't matter .use this given  details and don't skip any topics or points of the chapter and make this notes short for revision for exam with important examples";
+      break;
+    case 'formulas':
+      summaryText += "\ngive all the formulas of this chapter don't leave any one formulas";
+      break;
+  }
+
+  // Update the summaryBox with the generated summary
+  summaryBox.textContent = summaryText; 
+}
+
+    // Copy the summary to the clipboard
+    copySummaryButton.addEventListener('click', () => {
+      navigator.clipboard.writeText(summaryBox.textContent).then(() => {
+        alert("Summary copied to clipboard!");
+      });
+    });
+  </script>
+</body>
+</html>
+<h1>important 🚫 note</h1>
+while speaking any types of number use one more word with number
+
+<h5>✨All features are free!🥰</h5>
+<h7>BRDL AI2—your ultimate AI-powered educational tool, coming soon to the PlayStore!</h7>
+
+<h7>📝 Unique AI Tests: Generate and download secure, exclusive test PDFs.</h7>
+
+<h7>🎥 Custom AI Videos: Create videos in multiple languages with tailored settings.</h7>
+
+<h7>🔧 AI Tools: Access editing tools, website and app creators, free e-books, and exam materials.</h7>
+
+<h7>🌍 Language Support: Urdu, Sanskrit, Hindi, English, and more.</h7>
