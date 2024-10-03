@@ -98,7 +98,7 @@ POWERED BY BRDL <!DOCTYPE html>
 
   <!-- Separate box for displaying the summary -->
   <div id="summaryBox" class="hidden" contenteditable="true"></div>
-  <button id="copySummaryButton" class="hidden">Copy Prompt</button>
+  <button id="copySummaryButton" class="hidden">Create test</button>
 
   <script>
     const questionSets = {
@@ -328,12 +328,14 @@ POWERED BY BRDL <!DOCTYPE html>
   summaryBox.textContent = summaryText; 
 }
 
-    // Copy the summary to the clipboard
-    copySummaryButton.addEventListener('click', () => {
-      navigator.clipboard.writeText(summaryBox.textContent).then(() => {
-        alert("Summary copied to clipboard!");
-      });
-    });
+    // Copy the summary to the clipboard and open the ChatGPT website
+copySummaryButton.addEventListener('click', () => {
+  navigator.clipboard.writeText(summaryBox.textContent).then(() => {
+    alert("Summary copied to clipboard!");
+    // Open the ChatGPT website in a new window
+    window.open("https://chatgpt.com/", "_blank");
+  });
+});
   </script>
 </body>
 </html>
